@@ -18,6 +18,26 @@ The API is available at `http://localhost:3000/api/events`. It supports
 `POST /api/events`, `GET /api/events`, and `GET`, `PUT`, and `DELETE`
 `/api/events/:id`.
 
+Event listing and details are public. Creating, updating, and deleting events
+requires an Organizer bearer token. Organizers may only update or delete events
+they created; event ownership is assigned from the authenticated account.
+
+## Authentication API
+
+The backend also supports `POST /api/auth/register`, `POST /api/auth/login`,
+and authenticated `GET /api/auth/me`. Registration accepts `name`, `email`,
+`password`, and `role` (`User` or `Organizer`). Login returns a bearer token.
+Send it to `/api/auth/me` with an `Authorization: Bearer <token>` header.
+
+Set `JWT_SECRET` to a private, randomly generated secret and optionally set
+`JWT_EXPIRES_IN` (defaults to `1h`) in `backend/.env`. For example, generate a
+secret with `openssl rand -base64 32`. Do not commit or share the real `.env`.
+Apply pending User and event-ownership migrations with `npm run prisma:migrate`.
+
+Future event registration will be limited to users with the `User` role;
+Organizers cannot register as participants. Registration functionality is not
+implemented yet.
+
 ## Frontend
 
 With the backend running, start the React app in a second terminal:

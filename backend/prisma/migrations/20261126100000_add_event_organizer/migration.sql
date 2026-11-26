@@ -1,0 +1,7 @@
+ALTER TABLE "Event"
+ADD COLUMN "organizerId" UUID NOT NULL;
+
+ALTER TABLE "Event"
+ADD CONSTRAINT "Event_organizerId_fkey"
+FOREIGN KEY ("organizerId") REFERENCES "User"("id")
+ON DELETE RESTRICT ON UPDATE CASCADE;

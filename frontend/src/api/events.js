@@ -2,11 +2,13 @@ const apiBaseUrl = import.meta.env.VITE_API_URL || '/api'
 
 async function request(path, options = {}) {
   let response
+  const token = sessionStorage.getItem('gather_token')
   try {
     response = await fetch(`${apiBaseUrl}${path}`, {
       ...options,
       headers: {
         ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...options.headers,
       },
     })
@@ -53,4 +55,22 @@ export function updateEvent(id, event) {
 
 export function deleteEvent(id) {
   return request(`/events/${encodeURIComponent(id)}`, { method: 'DELETE' })
+}
+
+export function login(credentials) {
+  return request('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify(credentials),
+  })
+}
+
+export function register(details) {
+  return request('/auth/register', {
+    method: 'POST',
+    body: JSON.stringify(details),
+  })
+}
+
+export function getCurrentUser() {
+  return request('/auth/me')
 }

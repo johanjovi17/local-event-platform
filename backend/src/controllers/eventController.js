@@ -15,7 +15,7 @@ function requireValidId(req, res, next) {
 
 async function createEvent(req, res, next) {
   try {
-    const event = await eventService.createEvent(req.body);
+    const event = await eventService.createEvent(req.body, req.user.id);
     return res.status(201).json(event);
   } catch (error) {
     return next(error);
@@ -45,7 +45,11 @@ async function getEventById(req, res, next) {
 
 async function updateEvent(req, res, next) {
   try {
-    const event = await eventService.updateEvent(req.params.id, req.body);
+    const event = await eventService.updateEvent(
+      req.params.id,
+      req.body,
+      req.user.id,
+    );
     if (!event) {
       return res.status(404).json({ error: 'Event not found.' });
     }
@@ -57,7 +61,7 @@ async function updateEvent(req, res, next) {
 
 async function deleteEvent(req, res, next) {
   try {
-    const deleted = await eventService.deleteEvent(req.params.id);
+    const deleted = await eventService.deleteEvent(req.params.id, req.user.id);
     if (!deleted) {
       return res.status(404).json({ error: 'Event not found.' });
     }

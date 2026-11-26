@@ -136,9 +136,9 @@ function validateEventInput(input) {
   };
 }
 
-async function createEvent(input) {
+async function createEvent(input, organizerId) {
   const data = validateEventInput(input);
-  return prisma.event.create({ data });
+  return prisma.event.create({ data: { ...data, organizerId } });
 }
 
 async function getAllEvents() {
@@ -149,17 +149,20 @@ async function getEventById(id) {
   return prisma.event.findUnique({ where: { id } });
 }
 
-async function updateEvent(id, input) {
+async function updateEvent(id, input, organizerId) {
   const existingEvent = await prisma.event.findUnique({ where: { id } });
   if (!existingEvent) {
     return null;
+  }
+  if (existingEvent.organizerId !== organizerId) {
+    throw new AppError('You do not have permission to modify this event.', 403);
   }
 
   const data = validateEventInput(input);
 
   try {
     return await prisma.event.update({
-      where: { id },
+      where: { id, organizerId },
       data: { ...data, updatedAt: new Date() },
     });
   } catch (error) {
@@ -173,8 +176,16 @@ async function updateEvent(id, input) {
   }
 }
 
-async function deleteEvent(id) {
-  const result = await prisma.event.deleteMany({ where: { id } });
+async function deleteEvent(id, organizerId) {
+  const existingEvent = await prisma.event.findUnique({ where: { id } });
+  if (!existingEvent) {
+    return false;
+  }
+  if (existingEvent.organizerId !== organizerId) {
+    throw new AppError('You do not have permission to modify this event.', 403);
+  }
+
+  const result = await prisma.event.deleteMany({ where: { id, organizerId } });
   return result.count > 0;
 }
 

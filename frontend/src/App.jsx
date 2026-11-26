@@ -1,12 +1,23 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { createEvent, deleteEvent, getEvents, updateEvent } from './api/events'
+import {
+  createEvent,
+  deleteEvent,
+  getCurrentUser,
+  getEvents,
+  updateEvent,
+} from './api/events'
+import AuthPage from './components/AuthPage'
 import EventCard from './components/EventCard'
 import EventForm from './components/EventForm'
 import './App.css'
 
 function App() {
+  const [user, setUser] = useState(null)
+  const [authReady, setAuthReady] = useState(
+    () => !sessionStorage.getItem('gather_token'),
+  )
   const [events, setEvents] = useState([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(false)
   const [pageError, setPageError] = useState('')
   const [formError, setFormError] = useState('')
   const [isSaving, setIsSaving] = useState(false)
@@ -27,22 +38,30 @@ function App() {
 
   useEffect(() => {
     let isActive = true
+    const token = sessionStorage.getItem('gather_token')
 
-    getEvents()
-      .then((loadedEvents) => {
-        if (isActive) setEvents(loadedEvents)
+    if (!token) {
+      return undefined
+    }
+
+    getCurrentUser()
+      .then(({ user: currentUser }) => {
+        if (isActive) {
+          setUser(currentUser)
+          loadEvents()
+        }
       })
-      .catch((error) => {
-        if (isActive) setPageError(error.message)
+      .catch(() => {
+        if (isActive) sessionStorage.removeItem('gather_token')
       })
       .finally(() => {
-        if (isActive) setIsLoading(false)
+        if (isActive) setAuthReady(true)
       })
 
     return () => {
       isActive = false
     }
-  }, [])
+  }, [loadEvents])
 
   const upcomingCount = useMemo(
     () => events.filter((event) => event.status === 'Upcoming').length,
@@ -100,6 +119,33 @@ function App() {
     }
   }
 
+  function handleAuthenticated(result) {
+    sessionStorage.setItem('gather_token', result.token)
+    setUser(result.user)
+    loadEvents()
+  }
+
+  function handleLogout() {
+    sessionStorage.removeItem('gather_token')
+    setUser(null)
+    setEvents([])
+    setIsFormOpen(false)
+    setSelectedEvent(null)
+  }
+
+  if (!authReady) {
+    return (
+      <div className="auth-loading" role="status">
+        <span className="loading-dot" aria-hidden="true" />
+        <p>Getting your workspace ready...</p>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return <AuthPage onAuthenticated={handleAuthenticated} />
+  }
+
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -110,8 +156,11 @@ function App() {
           <span>gather<span className="brand-period">.</span></span>
         </a>
         <div className="topbar-right">
-          <span className="workspace-label">Event workspace</span>
-          <span className="avatar" aria-label="Workspace profile">G</span>
+          <span className="workspace-label">{user.name}</span>
+          <span className="avatar" aria-label={`${user.name}'s profile`}>
+            {user.name.charAt(0).toUpperCase()}
+          </span>
+          <button className="logout-button" onClick={handleLogout}>Log out</button>
         </div>
       </header>
 

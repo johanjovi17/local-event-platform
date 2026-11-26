@@ -1,6 +1,9 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { validateEventInput } = require('../src/services/eventService');
+const AppError = require('../src/errors/AppError');
+const prisma = require('../src/db/prisma');
+const eventService = require('../src/services/eventService');
+const { validateEventInput } = eventService;
 
 const validEvent = {
   title: 'Community meetup',
@@ -60,4 +63,52 @@ test('rejects impossible dates and missing required fields', () => {
       return true;
     },
   );
+});
+
+test('creates events using the authenticated organizer instead of request ownership', async () => {
+  const originalCreate = prisma.event.create;
+  let createdData;
+  prisma.event.create = async ({ data }) => {
+    createdData = data;
+    return data;
+  };
+
+  try {
+    await eventService.createEvent(
+      { ...validEvent, organizerId: 'untrusted-organizer-id' },
+      'authenticated-organizer-id',
+    );
+  } finally {
+    prisma.event.create = originalCreate;
+  }
+
+  assert.equal(createdData.organizerId, 'authenticated-organizer-id');
+});
+
+test('prevents a non-owner from updating or deleting an event', async () => {
+  const originalFindUnique = prisma.event.findUnique;
+  const originalUpdate = prisma.event.update;
+  const originalDeleteMany = prisma.event.deleteMany;
+  prisma.event.findUnique = async () => ({ organizerId: 'event-owner-id' });
+  prisma.event.update = async () => {
+    throw new Error('An unauthorized update was attempted.');
+  };
+  prisma.event.deleteMany = async () => {
+    throw new Error('An unauthorized delete was attempted.');
+  };
+
+  try {
+    await assert.rejects(
+      eventService.updateEvent('event-id', validEvent, 'other-organizer-id'),
+      (error) => error instanceof AppError && error.statusCode === 403,
+    );
+    await assert.rejects(
+      eventService.deleteEvent('event-id', 'other-organizer-id'),
+      (error) => error instanceof AppError && error.statusCode === 403,
+    );
+  } finally {
+    prisma.event.findUnique = originalFindUnique;
+    prisma.event.update = originalUpdate;
+    prisma.event.deleteMany = originalDeleteMany;
+  }
 });
