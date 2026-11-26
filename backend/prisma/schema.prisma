@@ -32,15 +32,18 @@ enum UserRole {
 }
 
 model User {
-  id            String         @id @default(uuid()) @db.Uuid
-  name          String         @db.VarChar(120)
-  email         String         @unique @db.VarChar(255)
-  passwordHash  String         @db.VarChar(255)
-  role          UserRole
-  createdAt     DateTime       @default(now()) @db.Timestamptz(6)
-  updatedAt     DateTime       @updatedAt @db.Timestamptz(6)
-  events        Event[]
-  registrations Registration[]
+  id               String         @id @default(uuid()) @db.Uuid
+  name             String         @db.VarChar(120)
+  email            String         @unique @db.VarChar(255)
+  passwordHash     String         @db.VarChar(255)
+  role             UserRole
+  organizationName String?        @db.VarChar(160)
+  description      String?        @db.Text
+  contactInfo      String?        @db.VarChar(255)
+  createdAt        DateTime       @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime       @updatedAt @db.Timestamptz(6)
+  events           Event[]
+  registrations    Registration[]
 }
 
 model Event {

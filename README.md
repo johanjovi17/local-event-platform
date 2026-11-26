@@ -41,6 +41,11 @@ route, and list their registrations at `GET /api/users/me/registrations`.
 Organizers cannot register as participants. Organizers can view attendees for
 their own events at `GET /api/events/:eventId/attendees`.
 
+Authenticated users can view and update their own profile at
+`/api/users/me/profile`. Organizers can update their organizer profile at
+`/api/organizers/me/profile`, and organizer profiles are public at
+`/api/organizers/:id/profile`.
+
 ## Frontend
 
 With the backend running, start the React app in a second terminal:
