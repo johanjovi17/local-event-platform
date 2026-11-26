@@ -32,11 +32,14 @@ Send it to `/api/auth/me` with an `Authorization: Bearer <token>` header.
 Set `JWT_SECRET` to a private, randomly generated secret and optionally set
 `JWT_EXPIRES_IN` (defaults to `1h`) in `backend/.env`. For example, generate a
 secret with `openssl rand -base64 32`. Do not commit or share the real `.env`.
-Apply pending User and event-ownership migrations with `npm run prisma:migrate`.
+Apply pending User, event-ownership, and registration migrations with
+`npm run prisma:migrate`.
 
-Future event registration will be limited to users with the `User` role;
-Organizers cannot register as participants. Registration functionality is not
-implemented yet.
+Regular users can register for Upcoming events with
+`POST /api/events/:eventId/registrations`, cancel using `DELETE` on the same
+route, and list their registrations at `GET /api/users/me/registrations`.
+Organizers cannot register as participants. Organizers can view attendees for
+their own events at `GET /api/events/:eventId/attendees`.
 
 ## Frontend
 

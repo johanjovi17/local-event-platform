@@ -13,6 +13,13 @@ function requireValidId(req, res, next) {
   return next();
 }
 
+function requireValidEventId(req, res, next) {
+  if (!isValidId(req.params.eventId)) {
+    return res.status(400).json({ error: 'eventId must be a valid UUID.' });
+  }
+  return next();
+}
+
 async function createEvent(req, res, next) {
   try {
     const event = await eventService.createEvent(req.body, req.user.id);
@@ -76,6 +83,7 @@ module.exports = {
   deleteEvent,
   getAllEvents,
   getEventById,
+  requireValidEventId,
   requireValidId,
   updateEvent,
 };

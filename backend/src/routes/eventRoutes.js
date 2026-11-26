@@ -1,5 +1,6 @@
 const express = require('express');
 const eventController = require('../controllers/eventController');
+const registrationController = require('../controllers/registrationController');
 const authenticate = require('../middleware/authenticate');
 const authorizeRoles = require('../middleware/authorizeRoles');
 
@@ -25,5 +26,27 @@ router
     eventController.requireValidId,
     eventController.deleteEvent,
   );
+
+router.post(
+  '/:eventId/registrations',
+  authenticate,
+  authorizeRoles('User'),
+  eventController.requireValidEventId,
+  registrationController.registerForEvent,
+);
+router.delete(
+  '/:eventId/registrations',
+  authenticate,
+  authorizeRoles('User'),
+  eventController.requireValidEventId,
+  registrationController.cancelRegistration,
+);
+router.get(
+  '/:eventId/attendees',
+  authenticate,
+  authorizeRoles('Organizer'),
+  eventController.requireValidEventId,
+  registrationController.getEventAttendees,
+);
 
 module.exports = router;
