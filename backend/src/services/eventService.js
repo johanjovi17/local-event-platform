@@ -26,6 +26,7 @@ const requiredFields = [
   'maxAttendees',
   'registrationDeadline',
 ];
+const maxPageSize = 50;
 
 function isValidDate(value) {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
@@ -46,6 +47,93 @@ function dateToDatabaseValue(value) {
 
 function timeToDatabaseValue(value) {
   return new Date(`1970-01-01T${value}:00.000Z`);
+}
+
+function parsePositiveInteger(value, field, defaultValue) {
+  if (value === undefined) {
+    return defaultValue;
+  }
+
+  if (
+    typeof value !== 'string' ||
+    !/^\d+$/.test(value) ||
+    !Number.isSafeInteger(Number(value)) ||
+    Number(value) <= 0
+  ) {
+    throw new AppError(`${field} must be a positive integer.`, 400);
+  }
+
+  return Number(value);
+}
+
+function getOptionalString(query, field) {
+  const value = query[field];
+  if (value === undefined) {
+    return undefined;
+  }
+  if (typeof value !== 'string') {
+    throw new AppError(`${field} must be a string.`, 400);
+  }
+  return value.trim();
+}
+
+function validateEventQuery(query = {}) {
+  if (!query || typeof query !== 'object' || Array.isArray(query)) {
+    throw new AppError('Query parameters must be an object.', 400);
+  }
+
+  const page = parsePositiveInteger(query.page, 'page', 1);
+  const pageSize = parsePositiveInteger(query.pageSize, 'pageSize', 10);
+  if (pageSize > maxPageSize) {
+    throw new AppError(`pageSize must be no greater than ${maxPageSize}.`, 400);
+  }
+
+  const search = getOptionalString(query, 'search');
+  const category = getOptionalString(query, 'category');
+  const location = getOptionalString(query, 'location');
+  const dateFrom = getOptionalString(query, 'dateFrom');
+  const dateTo = getOptionalString(query, 'dateTo');
+  const status = getOptionalString(query, 'status');
+  const errors = [];
+
+  for (const [field, value] of [['dateFrom', dateFrom], ['dateTo', dateTo]]) {
+    if (value !== undefined && !isValidDate(value)) {
+      errors.push(`${field} must be a valid date in YYYY-MM-DD format.`);
+    }
+  }
+
+  if (dateFrom && dateTo && isValidDate(dateFrom) && isValidDate(dateTo) && dateFrom > dateTo) {
+    errors.push('dateFrom must not be later than dateTo.');
+  }
+
+  if (status !== undefined && !statuses.has(status)) {
+    errors.push(`status must be one of: ${Array.from(statuses).join(', ')}.`);
+  }
+
+  if (category !== undefined && !categories.has(category)) {
+    errors.push(`category must be one of: ${Array.from(categories).join(', ')}.`);
+  }
+
+  const skip = (page - 1) * pageSize;
+  if (!Number.isSafeInteger(skip)) {
+    errors.push('page is too large.');
+  }
+
+  if (errors.length > 0) {
+    throw new AppError('Event query validation failed.', 400, errors);
+  }
+
+  return {
+    page,
+    pageSize,
+    skip,
+    search,
+    category,
+    location,
+    dateFrom,
+    dateTo,
+    status,
+  };
 }
 
 function validateEventInput(input) {
@@ -141,8 +229,56 @@ async function createEvent(input, organizerId) {
   return prisma.event.create({ data: { ...data, organizerId } });
 }
 
-async function getAllEvents() {
-  return prisma.event.findMany();
+async function getAllEvents(query) {
+  const filters = validateEventQuery(query);
+  const where = {
+    ...(filters.search
+      ? {
+          OR: [
+            { title: { contains: filters.search, mode: 'insensitive' } },
+            { description: { contains: filters.search, mode: 'insensitive' } },
+          ],
+        }
+      : {}),
+    ...(filters.category ? { category: filters.category } : {}),
+    ...(filters.location
+      ? { location: { contains: filters.location, mode: 'insensitive' } }
+      : {}),
+    ...(filters.dateFrom || filters.dateTo
+      ? {
+          eventDate: {
+            ...(filters.dateFrom
+              ? { gte: dateToDatabaseValue(filters.dateFrom) }
+              : {}),
+            ...(filters.dateTo
+              ? { lte: dateToDatabaseValue(filters.dateTo) }
+              : {}),
+          },
+        }
+      : {}),
+    ...(filters.status ? { status: filters.status } : {}),
+  };
+
+  const [events, totalRecords] = await Promise.all([
+    prisma.event.findMany({
+      where,
+      orderBy: { eventDate: 'asc' },
+      skip: filters.skip,
+      take: filters.pageSize,
+    }),
+    prisma.event.count({ where }),
+  ]);
+  const totalPages = Math.ceil(totalRecords / filters.pageSize);
+
+  return {
+    data: events,
+    pagination: {
+      currentPage: filters.page,
+      pageSize: filters.pageSize,
+      totalRecords,
+      totalPages,
+    },
+  };
 }
 
 async function getEventById(id) {
@@ -195,5 +331,6 @@ module.exports = {
   getAllEvents,
   getEventById,
   updateEvent,
+  validateEventQuery,
   validateEventInput,
 };

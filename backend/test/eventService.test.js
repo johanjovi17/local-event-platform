@@ -112,3 +112,112 @@ test('prevents a non-owner from updating or deleting an event', async () => {
     prisma.event.deleteMany = originalDeleteMany;
   }
 });
+
+test('lists events with combined filters, ascending dates, pagination, and total count', async () => {
+  const originalFindMany = prisma.event.findMany;
+  const originalCount = prisma.event.count;
+  let findManyArgs;
+  let countArgs;
+  prisma.event.findMany = async (args) => {
+    findManyArgs = args;
+    return [{ id: 'event-id', title: 'Goa Music Festival' }];
+  };
+  prisma.event.count = async (args) => {
+    countArgs = args;
+    return 35;
+  };
+
+  try {
+    const result = await eventService.getAllEvents({
+      page: '2',
+      pageSize: '10',
+      search: 'Goa',
+      category: 'Music',
+      location: 'Panaji',
+      dateFrom: '2027-01-01',
+      dateTo: '2027-12-31',
+      status: 'Upcoming',
+    });
+
+    assert.deepEqual(result, {
+      data: [{ id: 'event-id', title: 'Goa Music Festival' }],
+      pagination: {
+        currentPage: 2,
+        pageSize: 10,
+        totalRecords: 35,
+        totalPages: 4,
+      },
+    });
+    assert.deepEqual(findManyArgs, {
+      where: {
+        OR: [
+          { title: { contains: 'Goa', mode: 'insensitive' } },
+          { description: { contains: 'Goa', mode: 'insensitive' } },
+        ],
+        category: 'Music',
+        location: { contains: 'Panaji', mode: 'insensitive' },
+        eventDate: {
+          gte: new Date('2027-01-01T00:00:00.000Z'),
+          lte: new Date('2027-12-31T00:00:00.000Z'),
+        },
+        status: 'Upcoming',
+      },
+      orderBy: { eventDate: 'asc' },
+      skip: 10,
+      take: 10,
+    });
+    assert.deepEqual(countArgs, { where: findManyArgs.where });
+  } finally {
+    prisma.event.findMany = originalFindMany;
+    prisma.event.count = originalCount;
+  }
+});
+
+test('uses default pagination and returns zero pages when no events match', async () => {
+  const originalFindMany = prisma.event.findMany;
+  const originalCount = prisma.event.count;
+  let findManyArgs;
+  prisma.event.findMany = async (args) => {
+    findManyArgs = args;
+    return [];
+  };
+  prisma.event.count = async () => 0;
+
+  try {
+    const result = await eventService.getAllEvents({});
+
+    assert.deepEqual(findManyArgs, {
+      where: {},
+      orderBy: { eventDate: 'asc' },
+      skip: 0,
+      take: 10,
+    });
+    assert.deepEqual(result.pagination, {
+      currentPage: 1,
+      pageSize: 10,
+      totalRecords: 0,
+      totalPages: 0,
+    });
+    assert.deepEqual(result.data, []);
+  } finally {
+    prisma.event.findMany = originalFindMany;
+    prisma.event.count = originalCount;
+  }
+});
+
+test('rejects invalid pagination, status, date range, and oversized page size', async () => {
+  for (const query of [
+    { page: '0' },
+    { page: '1.5' },
+    { pageSize: '-1' },
+    { pageSize: '51' },
+    { status: 'Unknown' },
+    { dateFrom: '2027-02-30' },
+    { dateFrom: '2027-02-01', dateTo: '2027-01-31' },
+  ]) {
+    assert.throws(
+      () => eventService.validateEventQuery(query),
+      (error) => error instanceof AppError && error.statusCode === 400,
+    );
+  }
+});

@@ -35,8 +35,9 @@ async function request(path, options = {}) {
   return response.json()
 }
 
-export function getEvents() {
-  return request('/events')
+export async function getEvents() {
+  const result = await request('/events')
+  return result.data
 }
 
 export function createEvent(event) {

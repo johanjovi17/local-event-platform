@@ -24,8 +24,8 @@ async function createEvent(req, res, next) {
 
 async function getAllEvents(req, res, next) {
   try {
-    const events = await eventService.getAllEvents();
-    return res.status(200).json(events);
+    const result = await eventService.getAllEvents(req.query);
+    return res.status(200).json(result);
   } catch (error) {
     return next(error);
   }
