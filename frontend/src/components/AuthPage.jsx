@@ -53,30 +53,31 @@ function AuthPage({ onAuthenticated }) {
 
   return (
     <main className="auth-page">
-      <section className="auth-intro">
-        <a className="brand" href="/" aria-label="Gather home">
-          <span className="brand-mark" aria-hidden="true">g</span>
-          <span>gather<span className="brand-period">.</span></span>
-        </a>
-        <div className="auth-story">
-          <p className="eyebrow">YOUR COMMUNITY, TOGETHER</p>
-          <h1>Good things happen when we gather.</h1>
-          <p>Bring your community closer, one event at a time.</p>
-          <div className="auth-decoration" aria-hidden="true">
-            <span>✳</span><span>✦</span><span>✳</span>
-          </div>
-        </div>
-        <p className="auth-footer">Made for bringing people together.</p>
-      </section>
-
       <section className="auth-panel">
-        <div className="auth-card">
+        <aside className="auth-intro">
+          <p className="auth-brand"><span>Local</span> events</p>
+          <div className="auth-intro-copy">
+            <p className="auth-kicker">YOUR COMMUNITY STARTS HERE</p>
+            <h1>Find something worth showing up for.</h1>
+            <p>Discover local happenings, save your plans, and meet the people making things happen nearby.</p>
+          </div>
+          <div className="auth-preview" aria-hidden="true">
+            <span className="auth-preview-dot"></span>
+            <div>
+              <small>THIS WEEKEND</small>
+              <strong>Community meetups</strong>
+            </div>
+            <span className="auth-preview-arrow">→</span>
+          </div>
+        </aside>
+
+        <div className={`auth-card${isRegistering ? ' auth-card-register' : ''}`}>
           <p className="eyebrow">{isRegistering ? 'JOIN THE COMMUNITY' : 'WELCOME BACK'}</p>
-          <h2>{isRegistering ? 'Create your account' : 'Sign in to Gather'}</h2>
+          <h2>{isRegistering ? 'Create account' : 'Sign in'}</h2>
           <p className="auth-subtitle">
             {isRegistering
-              ? 'A few details and you’re ready to bring people together.'
-              : 'Your next gathering is just around the corner.'}
+              ? 'Set up your account to start discovering events.'
+              : 'Enter your details to pick up where you left off.'}
           </p>
 
           <div className="auth-tabs" role="tablist" aria-label="Account options">
@@ -155,7 +156,7 @@ function AuthPage({ onAuthenticated }) {
               />
             </label>
 
-            <button className="button button-primary auth-submit" type="submit" disabled={isSubmitting}>
+            <button className={`button button-primary auth-submit${isRegistering ? ' auth-submit-register' : ''}`} type="submit" disabled={isSubmitting}>
               {isSubmitting
                 ? 'Please wait...'
                 : isRegistering
@@ -165,9 +166,6 @@ function AuthPage({ onAuthenticated }) {
             </button>
           </form>
 
-          <p className="auth-privacy">
-            Your account details are kept secure and only used to support your events.
-          </p>
         </div>
       </section>
     </main>

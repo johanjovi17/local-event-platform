@@ -22,6 +22,14 @@ Event listing and details are public. Creating, updating, and deleting events
 requires an Organizer bearer token. Organizers may only update or delete events
 they created; event ownership is assigned from the authenticated account.
 
+Organizers can add up to six JPEG, PNG, or WebP images to each event using
+`POST /api/events/:eventId/images` with multipart form field `images`. Images
+are limited to 8 MB each and are served from `/api/uploads`. They are stored in
+`backend/uploads` by default; set `UPLOAD_DIR` to choose another local directory.
+Keep this directory on persistent storage when deploying so uploaded images
+survive restarts and redeployments. Apply the event image migration with
+`npm run prisma:migrate`.
+
 ## Authentication API
 
 The backend also supports `POST /api/auth/register`, `POST /api/auth/login`,

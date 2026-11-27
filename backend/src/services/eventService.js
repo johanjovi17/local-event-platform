@@ -1,6 +1,7 @@
 const { Prisma } = require('@prisma/client');
 const prisma = require('../db/prisma');
 const AppError = require('../errors/AppError');
+const { maxEventImages } = require('../constants/eventImages');
 
 const categories = new Set([
   'Music',
@@ -265,6 +266,7 @@ async function getAllEvents(query) {
       orderBy: { eventDate: 'asc' },
       skip: filters.skip,
       take: filters.pageSize,
+      include: { images: { orderBy: { position: 'asc' } } },
     }),
     prisma.event.count({ where }),
   ]);
@@ -282,7 +284,60 @@ async function getAllEvents(query) {
 }
 
 async function getEventById(id) {
-  return prisma.event.findUnique({ where: { id } });
+  return prisma.event.findUnique({
+    where: { id },
+    include: { images: { orderBy: { position: 'asc' } } },
+  });
+}
+
+async function addEventImages(eventId, organizerId, files) {
+  if (!Array.isArray(files) || files.length === 0) {
+    throw new AppError('Choose at least one image to upload.', 400);
+  }
+  if (files.length > maxEventImages) {
+    throw new AppError(`An event can have no more than ${maxEventImages} images.`, 400);
+  }
+
+  return prisma.$transaction(async (transaction) => {
+    const lockedEvents = await transaction.$queryRaw`
+      SELECT "id" FROM "Event" WHERE "id" = ${eventId}::uuid FOR UPDATE
+    `;
+    if (lockedEvents.length === 0) {
+      throw new AppError('Event not found.', 404);
+    }
+
+    const event = await transaction.event.findUnique({
+      where: { id: eventId },
+      select: { organizerId: true },
+    });
+    if (!event) {
+      throw new AppError('Event not found.', 404);
+    }
+    if (event.organizerId !== organizerId) {
+      throw new AppError('You do not have permission to modify this event.', 403);
+    }
+
+    const imageCount = await transaction.eventImage.count({ where: { eventId } });
+    if (imageCount + files.length > maxEventImages) {
+      throw new AppError(
+        `An event can have no more than ${maxEventImages} images.`,
+        400,
+      );
+    }
+
+    await transaction.eventImage.createMany({
+      data: files.map(({ filename }, index) => ({
+        eventId,
+        url: `/uploads/events/${filename}`,
+        position: imageCount + index,
+      })),
+    });
+
+    return transaction.eventImage.findMany({
+      where: { eventId },
+      orderBy: { position: 'asc' },
+    });
+  });
 }
 
 async function updateEvent(id, input, organizerId) {
@@ -313,7 +368,10 @@ async function updateEvent(id, input, organizerId) {
 }
 
 async function deleteEvent(id, organizerId) {
-  const existingEvent = await prisma.event.findUnique({ where: { id } });
+  const existingEvent = await prisma.event.findUnique({
+    where: { id },
+    include: { images: true },
+  });
   if (!existingEvent) {
     return false;
   }
@@ -322,14 +380,16 @@ async function deleteEvent(id, organizerId) {
   }
 
   const result = await prisma.event.deleteMany({ where: { id, organizerId } });
-  return result.count > 0;
+  return result.count > 0 ? existingEvent.images : null;
 }
 
 module.exports = {
   createEvent,
+  addEventImages,
   deleteEvent,
   getAllEvents,
   getEventById,
+  maxEventImages,
   updateEvent,
   validateEventQuery,
   validateEventInput,

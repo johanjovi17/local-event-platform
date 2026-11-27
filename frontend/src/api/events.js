@@ -7,7 +7,9 @@ async function request(path, options = {}) {
     response = await fetch(`${apiBaseUrl}${path}`, {
       ...options,
       headers: {
-        ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+        ...(options.body && !(options.body instanceof FormData)
+          ? { 'Content-Type': 'application/json' }
+          : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...options.headers,
       },
@@ -35,9 +37,50 @@ async function request(path, options = {}) {
   return response.json()
 }
 
-export async function getEvents() {
-  const result = await request('/events')
+export async function getEvents(options = {}) {
+  const query = new URLSearchParams({ pageSize: '50', ...options })
+  const result = await request(`/events?${query}`)
   return result.data
+}
+
+export async function getAllEvents(options = {}) {
+  const { page: initialPage = 1, pageSize = 50, ...filters } = options
+  const allEvents = []
+  let page = Number(initialPage)
+  let totalPages = page
+
+  while (page <= totalPages) {
+    const query = new URLSearchParams({
+      ...filters,
+      page: String(page),
+      pageSize: String(pageSize),
+    })
+    const result = await request(`/events?${query}`)
+    allEvents.push(...result.data)
+    totalPages = result.pagination.totalPages
+    page += 1
+  }
+
+  return allEvents
+}
+
+export function getEvent(id) {
+  return request(`/events/${encodeURIComponent(id)}`)
+}
+
+export function getEventImageUrl(imagePath) {
+  if (/^https?:\/\//i.test(imagePath)) return imagePath
+  const imageBase = `${apiBaseUrl.replace(/\/$/, '')}${imagePath.startsWith('/') ? imagePath : `/${imagePath}`}`
+  return /^https?:\/\//i.test(imageBase) ? new URL(imageBase).href : imageBase
+}
+
+export function uploadEventImages(eventId, files) {
+  const body = new FormData()
+  files.forEach((file) => body.append('images', file))
+  return request(`/events/${encodeURIComponent(eventId)}/images`, {
+    method: 'POST',
+    body,
+  })
 }
 
 export function createEvent(event) {
@@ -74,4 +117,43 @@ export function register(details) {
 
 export function getCurrentUser() {
   return request('/auth/me')
+}
+
+export function getOwnProfile() {
+  return request('/users/me/profile')
+}
+
+export function getOrganizerProfile(id) {
+  return request(`/organizers/${encodeURIComponent(id)}/profile`)
+}
+
+export function getEventAttendees(eventId) {
+  return request(`/events/${encodeURIComponent(eventId)}/attendees`)
+}
+
+export function updateOwnProfile(profile) {
+  return request('/users/me/profile', {
+    method: 'PUT',
+    body: JSON.stringify(profile),
+  })
+}
+
+export function updateOwnOrganizerProfile(profile) {
+  return request('/organizers/me/profile', {
+    method: 'PUT',
+    body: JSON.stringify(profile),
+  })
+}
+
+export function registerForEvent(eventId) {
+  return request(`/events/${encodeURIComponent(eventId)}/registrations`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  })
+}
+
+export function cancelEventRegistration(eventId) {
+  return request(`/events/${encodeURIComponent(eventId)}/registrations`, {
+    method: 'DELETE',
+  })
 }

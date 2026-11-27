@@ -165,6 +165,7 @@ test('lists events with combined filters, ascending dates, pagination, and total
       orderBy: { eventDate: 'asc' },
       skip: 10,
       take: 10,
+      include: { images: { orderBy: { position: 'asc' } } },
     });
     assert.deepEqual(countArgs, { where: findManyArgs.where });
   } finally {
@@ -191,6 +192,7 @@ test('uses default pagination and returns zero pages when no events match', asyn
       orderBy: { eventDate: 'asc' },
       skip: 0,
       take: 10,
+      include: { images: { orderBy: { position: 'asc' } } },
     });
     assert.deepEqual(result.pagination, {
       currentPage: 1,
@@ -202,6 +204,77 @@ test('uses default pagination and returns zero pages when no events match', asyn
   } finally {
     prisma.event.findMany = originalFindMany;
     prisma.event.count = originalCount;
+  }
+});
+
+test('rejects image uploads that exceed the per-event gallery limit', async () => {
+  await assert.rejects(
+    eventService.addEventImages(
+      'event-id',
+      'organizer-id',
+      Array.from({ length: eventService.maxEventImages + 1 }, (_, index) => ({
+        filename: `image-${index}.jpg`,
+      })),
+    ),
+    (error) => error instanceof AppError && error.statusCode === 400,
+  );
+});
+
+test('stores uploaded event images in upload order for the owning organizer', async () => {
+  const originalTransaction = prisma.$transaction;
+  let createdImages;
+  prisma.$transaction = async (callback) => callback({
+    $queryRaw: async () => [{ id: 'event-id' }],
+    event: {
+      findUnique: async () => ({ organizerId: 'organizer-id' }),
+    },
+    eventImage: {
+      count: async () => 2,
+      createMany: async ({ data }) => {
+        createdImages = data;
+      },
+      findMany: async () => createdImages,
+    },
+  });
+
+  try {
+    const images = await eventService.addEventImages('event-id', 'organizer-id', [
+      { filename: 'first.jpg' },
+      { filename: 'second.png' },
+    ]);
+
+    assert.deepEqual(images, [
+      { eventId: 'event-id', url: '/uploads/events/first.jpg', position: 2 },
+      { eventId: 'event-id', url: '/uploads/events/second.png', position: 3 },
+    ]);
+  } finally {
+    prisma.$transaction = originalTransaction;
+  }
+});
+
+test('rejects image uploads for events owned by another organizer', async () => {
+  const originalTransaction = prisma.$transaction;
+  prisma.$transaction = async (callback) => callback({
+    $queryRaw: async () => [{ id: 'event-id' }],
+    event: {
+      findUnique: async () => ({ organizerId: 'owner-id' }),
+    },
+    eventImage: {
+      count: async () => {
+        throw new Error('Image capacity must not be checked for another organizer.');
+      },
+    },
+  });
+
+  try {
+    await assert.rejects(
+      eventService.addEventImages('event-id', 'other-organizer-id', [
+        { filename: 'image.jpg' },
+      ]),
+      (error) => error instanceof AppError && error.statusCode === 403,
+    );
+  } finally {
+    prisma.$transaction = originalTransaction;
   }
 });
 

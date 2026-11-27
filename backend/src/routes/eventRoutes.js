@@ -3,6 +3,10 @@ const eventController = require('../controllers/eventController');
 const registrationController = require('../controllers/registrationController');
 const authenticate = require('../middleware/authenticate');
 const authorizeRoles = require('../middleware/authorizeRoles');
+const {
+  uploadEventImages,
+  verifyEventImageFiles,
+} = require('../middleware/eventImageUpload');
 
 const router = express.Router();
 
@@ -40,6 +44,15 @@ router.delete(
   authorizeRoles('User'),
   eventController.requireValidEventId,
   registrationController.cancelRegistration,
+);
+router.post(
+  '/:eventId/images',
+  authenticate,
+  authorizeRoles('Organizer'),
+  eventController.requireValidEventId,
+  uploadEventImages,
+  verifyEventImageFiles,
+  eventController.addEventImages,
 );
 router.get(
   '/:eventId/attendees',

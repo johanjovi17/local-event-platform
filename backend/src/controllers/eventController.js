@@ -1,4 +1,8 @@
 const eventService = require('../services/eventService');
+const {
+  removeStoredEventImages,
+  removeUploadedFiles,
+} = require('../middleware/eventImageUpload');
 
 function isValidId(id) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
@@ -50,6 +54,20 @@ async function getEventById(req, res, next) {
   }
 }
 
+async function addEventImages(req, res, next) {
+  try {
+    const images = await eventService.addEventImages(
+      req.params.eventId,
+      req.user.id,
+      req.files,
+    );
+    return res.status(201).json(images);
+  } catch (error) {
+    await removeUploadedFiles(req.files || []);
+    return next(error);
+  }
+}
+
 async function updateEvent(req, res, next) {
   try {
     const event = await eventService.updateEvent(
@@ -68,10 +86,11 @@ async function updateEvent(req, res, next) {
 
 async function deleteEvent(req, res, next) {
   try {
-    const deleted = await eventService.deleteEvent(req.params.id, req.user.id);
-    if (!deleted) {
+    const images = await eventService.deleteEvent(req.params.id, req.user.id);
+    if (!images) {
       return res.status(404).json({ error: 'Event not found.' });
     }
+    await removeStoredEventImages(images);
     return res.status(204).end();
   } catch (error) {
     return next(error);
@@ -80,6 +99,7 @@ async function deleteEvent(req, res, next) {
 
 module.exports = {
   createEvent,
+  addEventImages,
   deleteEvent,
   getAllEvents,
   getEventById,

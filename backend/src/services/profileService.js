@@ -98,10 +98,14 @@ async function getOwnProfile(userId) {
         select: {
           id: true,
           registeredAt: true,
-          event: true,
+          event: {
+            include: { images: { orderBy: { position: 'asc' } } },
+          },
         },
       },
-      events: true,
+      events: {
+        include: { images: { orderBy: { position: 'asc' } } },
+      },
     },
   });
 
@@ -163,7 +167,9 @@ async function getPublicOrganizerProfile(organizerId) {
       organizationName: true,
       description: true,
       contactInfo: true,
-      events: true,
+      events: {
+        include: { images: { orderBy: { position: 'asc' } } },
+      },
     },
   });
 

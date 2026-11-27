@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { MAX_EVENT_IMAGES } from '../eventImages'
 
 const categories = [
   'Music',
@@ -53,10 +54,25 @@ function getInitialForm(event) {
 
 function EventForm({ event, error, isSaving, onClose, onSave }) {
   const [form, setForm] = useState(() => getInitialForm(event))
+  const [imageFiles, setImageFiles] = useState([])
+  const [imageError, setImageError] = useState('')
+  const existingImageCount = event?.images?.length || 0
 
   function handleChange(e) {
     const { name, value } = e.target
     setForm((current) => ({ ...current, [name]: value }))
+  }
+
+  function handleImageChange(e) {
+    const selectedFiles = Array.from(e.target.files || [])
+    if (existingImageCount + selectedFiles.length > MAX_EVENT_IMAGES) {
+      setImageFiles([])
+      setImageError(`An event can have no more than ${MAX_EVENT_IMAGES} images total.`)
+      e.target.value = ''
+      return
+    }
+    setImageError('')
+    setImageFiles(selectedFiles)
   }
 
   function handleSubmit(e) {
@@ -65,7 +81,7 @@ function EventForm({ event, error, isSaving, onClose, onSave }) {
       ...form,
       maxAttendees: Number(form.maxAttendees),
       ...(event ? {} : { status: undefined }),
-    })
+    }, imageFiles)
   }
 
   return (
@@ -169,15 +185,34 @@ function EventForm({ event, error, isSaving, onClose, onSave }) {
               Maximum attendees
               <input required min="1" step="1" type="number" name="maxAttendees" value={form.maxAttendees} onChange={handleChange} placeholder="e.g. 50" />
             </label>
+
+            <label className="form-field full-width">
+              Event images
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                multiple
+                onChange={handleImageChange}
+                disabled={existingImageCount >= MAX_EVENT_IMAGES}
+              />
+              <span className="field-hint">
+                {existingImageCount + imageFiles.length} of {MAX_EVENT_IMAGES} images · JPEG, PNG, or WebP, up to 8 MB each
+              </span>
+            </label>
           </div>
 
+          {imageError && <p className="form-error" role="alert">{imageError}</p>}
           {error && <p className="form-error" role="alert">{error}</p>}
 
           <div className="modal-actions">
             <button className="button button-secondary" type="button" onClick={onClose} disabled={isSaving}>
               Cancel
             </button>
-            <button className="button button-primary" type="submit" disabled={isSaving}>
+            <button
+              className="button button-primary"
+              type="submit"
+              disabled={isSaving || Boolean(imageError)}
+            >
               {isSaving ? 'Saving...' : event ? 'Save changes' : 'Create event'}
             </button>
           </div>
