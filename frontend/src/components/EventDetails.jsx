@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getEvent, getEventImageUrl } from '../api/events'
 import { eventGalleryImages } from '../eventImages'
+import Loader from './Loader'
 
 function formatDate(value) {
   if (!value) return 'Date to be announced'
@@ -65,8 +66,8 @@ function EventDetails({
 
   if (isLoading) {
     return (
-      <div className="event-detail-state" role="status">
-        Loading event details…
+      <div className="event-detail-state">
+        <Loader label="Loading event details" size="large" />
       </div>
     )
   }
@@ -205,7 +206,7 @@ function EventDetails({
             disabled={isBusy || (!isRegistered && !canRegister)}
           >
             {isBusy
-              ? 'Please wait…'
+              ? <Loader label="Updating registration" size="small" />
               : isRegistered
                 ? 'Cancel registration'
                 : canRegister

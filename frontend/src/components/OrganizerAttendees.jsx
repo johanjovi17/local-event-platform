@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getEventAttendees } from '../api/events'
+import Loader from './Loader'
 
 function formatRegistrationDate(value) {
   if (!value) return ''
@@ -59,7 +60,9 @@ function OrganizerAttendees({ events }) {
       </header>
 
       {isLoading ? (
-        <div className="screen-state" role="status">Loading attendees…</div>
+        <div className="screen-state">
+          <Loader label="Loading attendees" size="large" />
+        </div>
       ) : error ? (
         <div className="notice notice-error" role="alert">
           <span>{error}</span>

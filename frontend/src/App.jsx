@@ -17,12 +17,16 @@ import AuthPage from './components/AuthPage'
 import EventCard from './components/EventCard'
 import EventDetails from './components/EventDetails'
 import EventForm from './components/EventForm'
+import Loader from './components/Loader'
 import OrganizerAttendees from './components/OrganizerAttendees'
 import OrganizerProfile from './components/OrganizerProfile'
 import ProfilePage from './components/ProfilePage'
+import ToastViewport from './components/ToastViewport'
 import './App.css'
 
 function App() {
+  const [toasts, setToasts] = useState([])
+  const nextToastId = useRef(0)
   const [user, setUser] = useState(null)
   const [authReady, setAuthReady] = useState(
     () => !sessionStorage.getItem('gather_token'),
@@ -43,6 +47,16 @@ function App() {
   const [selectedEventId, setSelectedEventId] = useState(null)
   const [selectedOrganizerId, setSelectedOrganizerId] = useState(null)
   const [organizerBackView, setOrganizerBackView] = useState('events')
+
+  const notify = useCallback((message) => {
+    const id = nextToastId.current + 1
+    nextToastId.current = id
+    setToasts((current) => [...current, { id, message }].slice(-4))
+  }, [])
+
+  const dismissToast = useCallback((id) => {
+    setToasts((current) => current.filter((toast) => toast.id !== id))
+  }, [])
 
   const loadWorkspace = useCallback(async () => {
     setPageError('')
@@ -171,6 +185,7 @@ function App() {
     setIsFormOpen(false)
     setSelectedEvent(null)
     await loadWorkspace()
+    notify(wasCreating ? 'Event created.' : 'Event updated.')
   }
 
   async function handleDelete(event) {
@@ -188,6 +203,7 @@ function App() {
             events: currentProfile.events?.filter((item) => item.id !== event.id),
           }
         : currentProfile)
+      notify('Event deleted.')
     } catch (error) {
       setPageError(error.message)
     }
@@ -197,12 +213,16 @@ function App() {
     setBusyEventId(event.id)
     setPageError('')
     try {
-      if (registeredEventIds.has(event.id)) {
+      const wasRegistered = registeredEventIds.has(event.id)
+      if (wasRegistered) {
         await cancelEventRegistration(event.id)
       } else {
         await registerForEvent(event.id)
       }
       await loadWorkspace()
+      notify(
+        wasRegistered ? 'Registration cancelled.' : 'You’re registered for this event.',
+      )
     } catch (error) {
       setPageError(error.message)
     } finally {
@@ -217,6 +237,7 @@ function App() {
     setEventTab('all')
     setSelectedEventId(null)
     await loadWorkspace()
+    notify('Signed in successfully.')
   }
 
   async function handleProfileSave(updatedProfile) {
@@ -252,14 +273,24 @@ function App() {
     setSelectedEventId(null)
     setIsFormOpen(false)
     setSelectedEvent(null)
+    notify('You’ve been signed out.')
   }
 
   if (!authReady) {
-    return <div className="screen-state" role="status">Loading…</div>
+    return (
+      <div className="screen-state">
+        <Loader label="Loading your session" size="large" />
+      </div>
+    )
   }
 
   if (!user) {
-    return <AuthPage onAuthenticated={handleAuthenticated} />
+    return (
+      <>
+        <AuthPage onAuthenticated={handleAuthenticated} onToast={notify} />
+        <ToastViewport toasts={toasts} onDismiss={dismissToast} />
+      </>
+    )
   }
 
   const isOrganizer = user.role === 'Organizer'
@@ -277,6 +308,7 @@ function App() {
 
   return (
     <div className={`app-shell ${isOrganizer ? 'organizer-shell' : 'user-shell'}`}>
+      <ToastViewport toasts={toasts} onDismiss={dismissToast} />
       <header className="topbar">
         <a className="brand" href="/" aria-label="Gather home">gather<span>.</span></a>
         <nav className="main-nav" aria-label="Main navigation">
@@ -391,7 +423,9 @@ function App() {
             )}
 
             {isLoading ? (
-              <div className="screen-state" role="status">Loading events…</div>
+              <div className="screen-state">
+                <Loader label="Loading events" size="large" />
+              </div>
             ) : displayedEvents.length === 0 && !pageError ? (
               <div className="empty-state">
                 <h2>

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { MAX_EVENT_IMAGES } from '../eventImages'
+import Loader from './Loader'
 
 const categories = [
   'Music',
@@ -213,7 +214,9 @@ function EventForm({ event, error, isSaving, onClose, onSave }) {
               type="submit"
               disabled={isSaving || Boolean(imageError)}
             >
-              {isSaving ? 'Saving...' : event ? 'Save changes' : 'Create event'}
+              {isSaving
+                ? <Loader label="Saving event" size="small" />
+                : event ? 'Save changes' : 'Create event'}
             </button>
           </div>
         </form>

@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { login, register } from '../api/events'
+import Loader from './Loader'
 
-function AuthPage({ onAuthenticated }) {
+function AuthPage({ onAuthenticated, onToast }) {
   const [mode, setMode] = useState('login')
   const [form, setForm] = useState({
     name: '',
@@ -10,14 +11,12 @@ function AuthPage({ onAuthenticated }) {
     role: 'User',
   })
   const [error, setError] = useState('')
-  const [message, setMessage] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const isRegistering = mode === 'register'
 
   function changeMode(nextMode) {
     setMode(nextMode)
     setError('')
-    setMessage('')
   }
 
   function handleChange(event) {
@@ -28,7 +27,6 @@ function AuthPage({ onAuthenticated }) {
   async function handleSubmit(event) {
     event.preventDefault()
     setError('')
-    setMessage('')
     setIsSubmitting(true)
 
     try {
@@ -36,7 +34,7 @@ function AuthPage({ onAuthenticated }) {
         await register(form)
         setMode('login')
         setForm((current) => ({ ...current, password: '' }))
-        setMessage('Your account is ready. Sign in to continue.')
+        onToast('Account created. Sign in to continue.')
       } else {
         const result = await login({
           email: form.email,
@@ -101,7 +99,6 @@ function AuthPage({ onAuthenticated }) {
             </button>
           </div>
 
-          {message && <p className="auth-message" role="status">{message}</p>}
           {error && <p className="auth-error" role="alert">{error}</p>}
 
           <form className="auth-form" onSubmit={handleSubmit}>
@@ -158,7 +155,7 @@ function AuthPage({ onAuthenticated }) {
 
             <button className={`button button-primary auth-submit${isRegistering ? ' auth-submit-register' : ''}`} type="submit" disabled={isSubmitting}>
               {isSubmitting
-                ? 'Please wait...'
+                ? <Loader label={isRegistering ? 'Creating account' : 'Signing in'} size="small" />
                 : isRegistering
                   ? 'Create account'
                   : 'Sign in'}

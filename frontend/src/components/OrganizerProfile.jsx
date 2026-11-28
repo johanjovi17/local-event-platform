@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getOrganizerProfile } from '../api/events'
+import Loader from './Loader'
 
 function OrganizerProfile({ organizerId, onBack }) {
   const [result, setResult] = useState(null)
@@ -33,7 +34,11 @@ function OrganizerProfile({ organizerId, onBack }) {
   }
 
   if (isLoading) {
-    return <div className="organizer-profile-state" role="status">Loading organizer profile…</div>
+    return (
+      <div className="organizer-profile-state">
+        <Loader label="Loading organizer profile" size="large" />
+      </div>
+    )
   }
 
   if (error) {

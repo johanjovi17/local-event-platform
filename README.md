@@ -43,6 +43,11 @@ secret with `openssl rand -base64 32`. Do not commit or share the real `.env`.
 Apply pending User, event-ownership, and registration migrations with
 `npm run prisma:migrate`.
 
+To populate the database with sample Goa-local organizers and upcoming events,
+run `npm run db:seed` from `backend/` after applying migrations. The seed is
+repeatable, creates display-only organizer accounts, and does not remove other
+records.
+
 Regular users can register for Upcoming events with
 `POST /api/events/:eventId/registrations`, cancel using `DELETE` on the same
 route, and list their registrations at `GET /api/users/me/registrations`.

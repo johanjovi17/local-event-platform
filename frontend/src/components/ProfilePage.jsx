@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import Loader from './Loader'
 
 function ProfilePage({ profile, isOrganizer, isSaving, error, onSave }) {
   const [form, setForm] = useState(() => ({
@@ -34,7 +35,11 @@ function ProfilePage({ profile, isOrganizer, isSaving, error, onSave }) {
   }
 
   if (!profile) {
-    return <div className="screen-state" role="status">Loading profile…</div>
+    return (
+      <div className="screen-state">
+        <Loader label="Loading profile" size="large" />
+      </div>
+    )
   }
 
   return (
@@ -108,7 +113,7 @@ function ProfilePage({ profile, isOrganizer, isSaving, error, onSave }) {
             <p className="form-error" role="alert">{saveError || error}</p>
           )}
           <button className="button button-primary" type="submit" disabled={isSaving}>
-            {isSaving ? 'Saving…' : 'Save profile'}
+            {isSaving ? <Loader label="Saving profile" size="small" /> : 'Save profile'}
           </button>
         </form>
 
