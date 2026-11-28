@@ -113,7 +113,7 @@ test('prevents a non-owner from updating or deleting an event', async () => {
   }
 });
 
-test('lists events with combined filters, ascending dates, pagination, and total count', async () => {
+test('lists events with combined filters, sorting, pagination, and total count', async () => {
   const originalFindMany = prisma.event.findMany;
   const originalCount = prisma.event.count;
   let findManyArgs;
@@ -131,12 +131,13 @@ test('lists events with combined filters, ascending dates, pagination, and total
     const result = await eventService.getAllEvents({
       page: '2',
       pageSize: '10',
-      search: 'Goa',
       category: 'Music',
       location: 'Panaji',
       dateFrom: '2027-01-01',
       dateTo: '2027-12-31',
       status: 'Upcoming',
+      sortBy: 'title',
+      sortOrder: 'desc',
     });
 
     assert.deepEqual(result, {
@@ -150,10 +151,6 @@ test('lists events with combined filters, ascending dates, pagination, and total
     });
     assert.deepEqual(findManyArgs, {
       where: {
-        OR: [
-          { title: { contains: 'Goa', mode: 'insensitive' } },
-          { description: { contains: 'Goa', mode: 'insensitive' } },
-        ],
         category: 'Music',
         location: { contains: 'Panaji', mode: 'insensitive' },
         eventDate: {
@@ -162,7 +159,7 @@ test('lists events with combined filters, ascending dates, pagination, and total
         },
         status: 'Upcoming',
       },
-      orderBy: { eventDate: 'asc' },
+      orderBy: { title: 'desc' },
       skip: 10,
       take: 10,
       include: { images: { orderBy: { position: 'asc' } } },
@@ -174,7 +171,7 @@ test('lists events with combined filters, ascending dates, pagination, and total
   }
 });
 
-test('uses default pagination and returns zero pages when no events match', async () => {
+test('ignores legacy search and uses default pagination when no events match', async () => {
   const originalFindMany = prisma.event.findMany;
   const originalCount = prisma.event.count;
   let findManyArgs;
@@ -185,7 +182,7 @@ test('uses default pagination and returns zero pages when no events match', asyn
   prisma.event.count = async () => 0;
 
   try {
-    const result = await eventService.getAllEvents({});
+    const result = await eventService.getAllEvents({ search: 'Goa' });
 
     assert.deepEqual(findManyArgs, {
       where: {},
@@ -285,6 +282,8 @@ test('rejects invalid pagination, status, date range, and oversized page size', 
     { pageSize: '-1' },
     { pageSize: '51' },
     { status: 'Unknown' },
+    { sortBy: 'organizerId' },
+    { sortOrder: 'random' },
     { dateFrom: '2027-02-30' },
     { dateFrom: '2027-02-01', dateTo: '2027-01-31' },
   ]) {

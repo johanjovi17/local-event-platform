@@ -22,6 +22,10 @@ Event listing and details are public. Creating, updating, and deleting events
 requires an Organizer bearer token. Organizers may only update or delete events
 they created; event ownership is assigned from the authenticated account.
 
+`GET /api/events` supports `page`, `pageSize` (up to 50), `category`,
+`location`, `dateFrom`, `dateTo`, `status`, `sortBy` (`eventDate`, `title`, or
+`location`), and `sortOrder` (`asc` or `desc`). Text search is not supported.
+
 Organizers can add up to six JPEG, PNG, or WebP images to each event using
 `POST /api/events/:eventId/images` with multipart form field `images`. Images
 are limited to 8 MB each and are served from `/api/uploads`. They are stored in

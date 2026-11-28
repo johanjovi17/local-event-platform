@@ -16,6 +16,8 @@ const categories = new Set([
 ]);
 
 const statuses = new Set(['Upcoming', 'Ongoing', 'Completed', 'Cancelled']);
+const eventSortFields = new Set(['eventDate', 'title', 'location']);
+const sortOrders = new Set(['asc', 'desc']);
 const requiredFields = [
   'title',
   'description',
@@ -89,12 +91,13 @@ function validateEventQuery(query = {}) {
     throw new AppError(`pageSize must be no greater than ${maxPageSize}.`, 400);
   }
 
-  const search = getOptionalString(query, 'search');
   const category = getOptionalString(query, 'category');
   const location = getOptionalString(query, 'location');
   const dateFrom = getOptionalString(query, 'dateFrom');
   const dateTo = getOptionalString(query, 'dateTo');
   const status = getOptionalString(query, 'status');
+  const sortBy = getOptionalString(query, 'sortBy') ?? 'eventDate';
+  const sortOrder = getOptionalString(query, 'sortOrder') ?? 'asc';
   const errors = [];
 
   for (const [field, value] of [['dateFrom', dateFrom], ['dateTo', dateTo]]) {
@@ -115,6 +118,14 @@ function validateEventQuery(query = {}) {
     errors.push(`category must be one of: ${Array.from(categories).join(', ')}.`);
   }
 
+  if (!eventSortFields.has(sortBy)) {
+    errors.push(`sortBy must be one of: ${Array.from(eventSortFields).join(', ')}.`);
+  }
+
+  if (!sortOrders.has(sortOrder)) {
+    errors.push(`sortOrder must be one of: ${Array.from(sortOrders).join(', ')}.`);
+  }
+
   const skip = (page - 1) * pageSize;
   if (!Number.isSafeInteger(skip)) {
     errors.push('page is too large.');
@@ -128,12 +139,13 @@ function validateEventQuery(query = {}) {
     page,
     pageSize,
     skip,
-    search,
     category,
     location,
     dateFrom,
     dateTo,
     status,
+    sortBy,
+    sortOrder,
   };
 }
 
@@ -233,14 +245,6 @@ async function createEvent(input, organizerId) {
 async function getAllEvents(query) {
   const filters = validateEventQuery(query);
   const where = {
-    ...(filters.search
-      ? {
-          OR: [
-            { title: { contains: filters.search, mode: 'insensitive' } },
-            { description: { contains: filters.search, mode: 'insensitive' } },
-          ],
-        }
-      : {}),
     ...(filters.category ? { category: filters.category } : {}),
     ...(filters.location
       ? { location: { contains: filters.location, mode: 'insensitive' } }
@@ -263,7 +267,7 @@ async function getAllEvents(query) {
   const [events, totalRecords] = await Promise.all([
     prisma.event.findMany({
       where,
-      orderBy: { eventDate: 'asc' },
+      orderBy: { [filters.sortBy]: filters.sortOrder },
       skip: filters.skip,
       take: filters.pageSize,
       include: { images: { orderBy: { position: 'asc' } } },

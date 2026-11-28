@@ -131,6 +131,71 @@
   border-bottom: 1px solid #e5e8e3;
 }
 
+.event-filters {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: end;
+  gap: 12px;
+  margin: 0 0 22px;
+  padding: 16px;
+  border: 1px solid #e5e8e3;
+  border-radius: 9px;
+  background: #fff;
+}
+
+.event-filter-field {
+  display: grid;
+  gap: 6px;
+  color: #59635d;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.event-filter-field input,
+.event-filter-field select {
+  width: 100%;
+  min-width: 0;
+  height: 38px;
+  padding: 0 10px;
+  border: 1px solid #dfe4de;
+  border-radius: 6px;
+  background: #fff;
+  color: #303833;
+  font: inherit;
+  font-size: 12px;
+}
+
+.event-filter-field input:focus,
+.event-filter-field select:focus {
+  border-color: var(--accent);
+  outline: 2px solid color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.event-filter-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.event-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 24px;
+  color: #68716b;
+  font-size: 12px;
+}
+
+.event-pagination > div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.event-page-number {
+  white-space: nowrap;
+}
+
 .event-tab {
   position: relative;
   padding: 0 0 13px;
@@ -1465,6 +1530,10 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .event-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .event-detail-content {
     grid-template-columns: 1fr;
     gap: 24px;
@@ -1510,6 +1579,20 @@
   .profile-grid,
   .form-grid {
     grid-template-columns: 1fr;
+  }
+
+  .event-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .event-pagination {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .event-pagination > div {
+    width: 100%;
+    justify-content: space-between;
   }
 
   .form-field.full-width {

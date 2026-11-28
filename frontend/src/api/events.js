@@ -37,31 +37,14 @@ async function request(path, options = {}) {
   return response.json()
 }
 
-export async function getEvents(options = {}) {
-  const query = new URLSearchParams({ pageSize: '50', ...options })
-  const result = await request(`/events?${query}`)
-  return result.data
-}
-
-export async function getAllEvents(options = {}) {
-  const { page: initialPage = 1, pageSize = 50, ...filters } = options
-  const allEvents = []
-  let page = Number(initialPage)
-  let totalPages = page
-
-  while (page <= totalPages) {
-    const query = new URLSearchParams({
-      ...filters,
-      page: String(page),
-      pageSize: String(pageSize),
-    })
-    const result = await request(`/events?${query}`)
-    allEvents.push(...result.data)
-    totalPages = result.pagination.totalPages
-    page += 1
-  }
-
-  return allEvents
+export function getEventsPage(options = {}) {
+  const query = new URLSearchParams()
+  Object.entries(options).forEach(([key, value]) => {
+    if (value !== '' && value !== undefined && value !== null) {
+      query.set(key, String(value))
+    }
+  })
+  return request(`/events?${query}`)
 }
 
 export function getEvent(id) {
